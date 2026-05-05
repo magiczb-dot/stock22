@@ -46,7 +46,7 @@ jobs:
         db_database: instockdb  
         db_port: 3306  
       run: |  
-        cd instock  
+        cd instock/job  
         python execute_daily_job.py  
   
     - name: Upload Results  
