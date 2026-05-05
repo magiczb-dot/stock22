@@ -1,0 +1,59 @@
+name: InStock Daily Analysis  
+  
+on:  
+  schedule:  
+    - cron: '30 7 * * 1-5'  # 周一至周五 15:30 北京时间（收盘后）  
+  workflow_dispatch:  # 手动触发  
+  
+jobs:  
+  analyze:  
+    runs-on: ubuntu-latest  
+      
+    services:  
+      mysql:  
+        image: mysql:8.0  
+        env:  
+          MYSQL_ROOT_PASSWORD: root  
+        ports:  
+          - 3306:3306  
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3  
+  
+    steps:  
+    - uses: actions/checkout@v4  
+  
+    - name: Setup Python  
+      uses: actions/setup-python@v5  
+      with:  
+        python-version: '3.11'  
+  
+    - name: Install TA-Lib C Library  
+      run: |  
+        wget https://github.com/ta-lib/ta-lib/releases/download/v0.6.4/ta-lib-0.6.4-src.tar.gz  
+        tar -xzf ta-lib-0.6.4-src.tar.gz  
+        cd ta-lib-0.6.4/  
+        ./configure --prefix=/usr  
+        make -j$(nproc)  
+        sudo make install  
+  
+    - name: Install Dependencies  
+      run: pip install -r requirements.txt  
+  
+    - name: Run Daily Job  
+      env:  
+        db_host: 127.0.0.1  
+        db_user: root  
+        db_password: root  
+        db_database: instockdb  
+        db_port: 3306  
+      run: |  
+        cd instock  
+        python execute_daily_job.py  
+  
+    - name: Upload Results  
+      uses: actions/upload-artifact@v4  
+      with:  
+        name: stock-results  
+        path: |  
+          instock/*.log  
+          instock/job/output/  
+        retention-days: 30  
